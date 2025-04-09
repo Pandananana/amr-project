@@ -1,3 +1,4 @@
 .venv/
 *.bag
 *.mp4
+__pycache__/*
