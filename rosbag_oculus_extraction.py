@@ -85,7 +85,9 @@ with Reader(bag_path) as reader:
             cart_image_data.x_table: X coordinate for each pixel in cart_image in m
             cart_image_data.y_table: Y coordinate for each pixel in cart_image in m
             """
+            cv2.putText(cart_image_data.cart_image, str(timestamp), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
             cv2.imshow("backscatter", cart_image_data.cart_image)
+
             key = cv2.waitKey(10)
             if key & 0xFF == ord('q'):
                 break
