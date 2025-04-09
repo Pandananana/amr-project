@@ -48,20 +48,19 @@ output_path = bag_path.with_suffix('.mp4').with_name("oculus_" + bag_path.name)
 typestore = get_typestore(Stores.ROS1_NOETIC)
 typestore.register(add_types)
 
+START_TIMESTAMP = 1742392985721249949
 # Create reader instance and open for reading.
 with Reader(bag_path) as reader:
-    # Calculate and print the duration
-    start_time = reader.start_time
-    end_time = reader.end_time
-    duration = (end_time - start_time) / 1e9
-    print(f"Duration: {duration:.2f} seconds") 
-
     # Topic and msgtype information is available on .connections list.
     for connection in reader.connections:
         print(connection.topic, connection.msgtype)
 
     # Iterate over messages.
     for connection, timestamp, rawdata in reader.messages():
+        # Skip messages before our desired start time
+        if timestamp < START_TIMESTAMP:
+            continue
+
         if connection.topic == '/oculus/raw_data':
             msg = typestore.deserialize_ros1(rawdata, connection.msgtype)
             ping_result, polar_image_data, new_buffer = unpack_data_entry(msg.data.tobytes()) 
@@ -85,7 +84,6 @@ with Reader(bag_path) as reader:
             cart_image_data.x_table: X coordinate for each pixel in cart_image in m
             cart_image_data.y_table: Y coordinate for each pixel in cart_image in m
             """
-            cv2.putText(cart_image_data.cart_image, str(timestamp), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
             cv2.imshow("backscatter", cart_image_data.cart_image)
 
             key = cv2.waitKey(10)
