@@ -61,14 +61,19 @@ with Reader(bag_path) as reader:
 
             img = polar_to_cart(polar_image_data).cart_image
 
-            # Filter data
-            filtered = img > 50
+            # Gaussian blur the image
+            img = cv2.GaussianBlur(img, (5, 5), 0)
 
-            # Convert boolean array to uint8 for display (255 for True, 0 for False)
-            display_img = np.uint8(filtered) * 255
+            # Apply opening to remove noise
+            kernel = np.ones((5, 5), np.uint8)
+            img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+
+            # Threshold the image
+            # You can adjust the threshold value (127 in this example) to whatever works best
+            _, img = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY)
 
             # Display the image
-            cv2.imshow("backscatter", display_img)
+            cv2.imshow("backscatter", img)
 
             key = cv2.waitKey(10)
             if key & 0xFF == ord('q'):
