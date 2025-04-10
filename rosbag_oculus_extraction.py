@@ -59,33 +59,19 @@ with Reader(bag_path) as reader:
             if polar_image_data is None:
                 continue
 
-            cart_image_data = polar_to_cart(polar_image_data).cart_image
-            
-            # Create a colored visualization image
-            vis_image = cv2.cvtColor(cart_image_data, cv2.COLOR_GRAY2BGR)
-            
-            # Detect peaks in the image
-            # Note: Adjust the parameters as needed
-            num_train = 10
-            num_guard = 5
-            rate_fa = 0.001
-            
-            # Convert 2D image to 1D array for CFAR
-            flat_data = cart_image_data.flatten()
-            peaks = detect_peaks(flat_data, num_train, num_guard, rate_fa)
-            
-            # Convert 1D peak indices back to 2D coordinates
-            height, width = cart_image_data.shape
-            for peak_idx in peaks:
-                y = peak_idx // width
-                x = peak_idx % width
-                # Draw a circle at each peak location (red color)
-                cv2.circle(vis_image, (x, y), 3, (0, 0, 255), -1)
-            
-            # Display the original image with peaks highlighted
-            cv2.imshow("backscatter with peaks", vis_image)
+            img = polar_to_cart(polar_image_data).cart_image
+
+            # Filter data
+            filtered = img > 50
+
+            # Convert boolean array to uint8 for display (255 for True, 0 for False)
+            display_img = np.uint8(filtered) * 255
+
+            # Display the image
+            cv2.imshow("backscatter", display_img)
 
             key = cv2.waitKey(10)
             if key & 0xFF == ord('q'):
                 break
+
     cv2.destroyAllWindows()
