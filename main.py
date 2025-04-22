@@ -60,10 +60,12 @@ with Reader(bag_path) as reader:
             if polar_image_data is None:
                 continue
             img = polar_to_cart(polar_image_data).cart_image
+
             # Median filter to reduce noise
-            img = cv2.medianBlur(img, 11)
+            img_median = cv2.medianBlur(img, 11)
+            
             # Threshold the image
-            _, binary_img = cv2.threshold(img, 40, 255, cv2.THRESH_BINARY)
+            _, binary_img = cv2.threshold(img_median, 40, 255, cv2.THRESH_BINARY)
             
             # Convert to format expected by skimage (binary boolean array)
             binary_image = binary_img.astype(bool)
@@ -73,35 +75,36 @@ with Reader(bag_path) as reader:
             regions = regionprops(label_image)
             
             # Filter out small regions and regions with low eccentricity
-            min_area = 2000
-            min_eccentricity = 0.9
+            min_area = 1000
+            min_eccentricity = 0.98
             filtered_regions = []
+            
             for region in regions:
                 if region.area >= min_area and region.eccentricity >= min_eccentricity:
                     filtered_regions.append(region)
-                    print(f"Label: {region.label}, Area: {region.area}, Eccentricity: {region.eccentricity:.2f}")
+                    # print(f"Label: {region.label}, Area: {region.area}, Eccentricity: {region.eccentricity:.2f}, Minor Axis: {region.minor_axis_length:.2f}, Major Axis: {region.major_axis_length:.2f}")
             
-            # Create visualization image for OpenCV display
-            filtered_image = np.zeros_like(binary_img)
-            for region in filtered_regions:
+            # Create a colored overlay for visualization
+            # Convert grayscale image to color for overlay
+            img_color = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+            
+            # Create a transparent colored mask for the regions
+            overlay = np.zeros_like(img_color)
+                 
+            for i, region in enumerate(filtered_regions):
                 # Get the coordinates that make up this region
                 coords = region.coords
-                # Set those pixels to white in the filtered image
-                filtered_image[coords[:, 0], coords[:, 1]] = 255
                 
-                # Draw bounding box around each detected wall
-                minr, minc, maxr, maxc = region.bbox
-                cv2.rectangle(img, (minc, minr), (maxc, maxr), 255, 2)
-                
-                # Optionally draw the centroid
-                y, x = region.centroid
-                cv2.circle(img, (int(x), int(y)), 5, 255, -1)
+                # Set those pixels to the selected color in the overlay
+                overlay[coords[:, 0], coords[:, 1]] = (0, 0, 255)
             
-            # Display the original image with detections
-            cv2.imshow("backscatter with detections", img)
+            # Blend the original image with the overlay
+            alpha = 0.5  # Opacity of the overlay (0.0 to 1.0)
+            result = cv2.addWeighted(img_color, 1, overlay, alpha, 0)
             
-            # Optionally display the filtered image too
-            cv2.imshow("filtered walls", filtered_image)
+            # Display the result with the colored overlay
+            cv2.namedWindow("Sonar with wall detection", cv2.WINDOW_NORMAL)
+            cv2.imshow("Sonar with wall detection", result)
             
             # Wait for key press
             if cv2.waitKey(1) & 0xFF == ord('q'):
