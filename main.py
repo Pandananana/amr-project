@@ -6,6 +6,7 @@ from bps_oculus.core import unpack_data_entry, polar_to_cart
 import cv2
 from cfar import detect_peaks
 import numpy as np
+from skimage.measure import label, regionprops
 
 
 ### SETUP CUSTOM MESSAGE DEFINITION FOR RawData
@@ -58,20 +59,52 @@ with Reader(bag_path) as reader:
             # Skip if no data
             if polar_image_data is None:
                 continue
-
             img = polar_to_cart(polar_image_data).cart_image
-
             # Median filter to reduce noise
-            img = cv2.medianBlur(img, 9)
-
+            img = cv2.medianBlur(img, 11)
             # Threshold the image
-            _, img = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY)
-
-            # Display the image
-            cv2.imshow("backscatter", img)
-
-            key = cv2.waitKey(10)
-            if key & 0xFF == ord('q'):
+            _, binary_img = cv2.threshold(img, 40, 255, cv2.THRESH_BINARY)
+            
+            # Convert to format expected by skimage (binary boolean array)
+            binary_image = binary_img.astype(bool)
+            
+            # Find all blobs with 8-connectivity
+            label_image = label(binary_image, connectivity=2)
+            regions = regionprops(label_image)
+            
+            # Filter out small regions and regions with low eccentricity
+            min_area = 2000
+            min_eccentricity = 0.9
+            filtered_regions = []
+            for region in regions:
+                if region.area >= min_area and region.eccentricity >= min_eccentricity:
+                    filtered_regions.append(region)
+                    print(f"Label: {region.label}, Area: {region.area}, Eccentricity: {region.eccentricity:.2f}")
+            
+            # Create visualization image for OpenCV display
+            filtered_image = np.zeros_like(binary_img)
+            for region in filtered_regions:
+                # Get the coordinates that make up this region
+                coords = region.coords
+                # Set those pixels to white in the filtered image
+                filtered_image[coords[:, 0], coords[:, 1]] = 255
+                
+                # Draw bounding box around each detected wall
+                minr, minc, maxr, maxc = region.bbox
+                cv2.rectangle(img, (minc, minr), (maxc, maxr), 255, 2)
+                
+                # Optionally draw the centroid
+                y, x = region.centroid
+                cv2.circle(img, (int(x), int(y)), 5, 255, -1)
+            
+            # Display the original image with detections
+            cv2.imshow("backscatter with detections", img)
+            
+            # Optionally display the filtered image too
+            cv2.imshow("filtered walls", filtered_image)
+            
+            # Wait for key press
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
     cv2.destroyAllWindows()
