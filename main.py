@@ -61,15 +61,10 @@ with Reader(bag_path) as reader:
 
             img = polar_to_cart(polar_image_data).cart_image
 
-            # Gaussian blur the image
-            img = cv2.GaussianBlur(img, (5, 5), 0)
-
-            # Apply opening to remove noise
-            kernel = np.ones((5, 5), np.uint8)
-            img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+            # Median filter to reduce noise
+            img = cv2.medianBlur(img, 9)
 
             # Threshold the image
-            # You can adjust the threshold value (127 in this example) to whatever works best
             _, img = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY)
 
             # Display the image
