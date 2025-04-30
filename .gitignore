@@ -3,3 +3,5 @@
 *.mp4
 __pycache__/*
 *.npy
+*.direnv
+__pycache__/
